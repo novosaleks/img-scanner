@@ -118,6 +118,7 @@
   const getTooltipStyles = ({ x, y }) => {
     return `
       position: absolute;
+      z-index: 999;
       top: ${y}px;
       left: ${x}px;
     `;
