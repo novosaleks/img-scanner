@@ -13,11 +13,12 @@
     }
   `;
   const BASE_URL = 'https://random-word-api.herokuapp.com/word';
-  const mutationOptions = {childList: true, subtree: true};
+  const mutationOptions = { childList: true, subtree: true };
+  const defaultAlt = 'picture';
   const tooltipInput = document.createElement('input');
 
   // methods
- const handleDOMMutations = async (mutations) => {
+  const handleDOMMutations = async (mutations) => {
     const newImages = [];
 
     for (const mutation of mutations) {
@@ -31,13 +32,16 @@
     if (newImages.length) {
       await setAttributes(newImages);
     }
-  }
+  };
 
   const onTooltipHandle = async (e) => {
     if (e.target && e.target.tagName === 'IMG' && !tooltipActive) {
       tooltipActive = true;
       const currentAltText = e.target.alt || '';
-      const customAltText = await createCustomAlt(currentAltText, {x: e.clientX, y: e.clientY});
+      const customAltText = await createCustomAlt(currentAltText, {
+        x: e.clientX,
+        y: e.clientY,
+      });
 
       if (customAltText !== currentAltText && customAltText.trim()) {
         e.target.alt = customAltText;
@@ -45,7 +49,7 @@
 
       tooltipActive = false;
     }
-  }
+  };
 
   const setAttributes = async (images) => {
     const imagesToChange = getImagesNeedsToModify(images);
@@ -55,75 +59,76 @@
       img.alt = words[i];
       img.setAttribute(dataAlterAttribute, '');
     });
-  }
+  };
 
   const getImagesNeedsToModify = (imgCollection) => {
     return [...imgCollection].filter(isImproperImage);
-  }
+  };
 
   const isImproperImage = (img) => {
     return !(
-      !overwriteExistingAlt && img.getAttribute('alt') ||
-      overwriteExistingAlt && img.hasAttribute(dataAlterAttribute)
+      (!overwriteExistingAlt && img.getAttribute('alt')) ||
+      (overwriteExistingAlt && img.hasAttribute(dataAlterAttribute))
     );
-  }
+  };
 
-  const createCustomAlt = (innerValue, {x, y}) => {
+  const createCustomAlt = (innerValue, { x, y }) => {
     return new Promise((res) => {
-      placeTooltipInDom(innerValue, {x, y});
+      placeTooltipInDom(innerValue, { x, y });
 
       const cleanUpTooltip = (newAltText) => {
         res(newAltText);
         tooltipInput.removeEventListener('keydown', onKeyDown);
         document.body.removeEventListener('click', onOutsideTooltipClick);
         tooltipInput.remove();
-      }
+      };
 
-      const onKeyDown = e => {
+      const onKeyDown = (e) => {
         if (e.key === 'Enter') {
           cleanUpTooltip(e.target.value);
         }
         if (e.key === 'Escape') {
           cleanUpTooltip(innerValue);
         }
-      }
+      };
 
-      const onOutsideTooltipClick = (e) => outsideClickHandler(e, tooltipInput, () => {
-        cleanUpTooltip(tooltipInput.value);
-      });
+      const onOutsideTooltipClick = (e) =>
+        outsideClickHandler(e, tooltipInput, () => {
+          cleanUpTooltip(tooltipInput.value);
+        });
 
       tooltipInput.addEventListener('keydown', onKeyDown);
       document.body.addEventListener('click', onOutsideTooltipClick);
     });
-  }
+  };
 
-  const placeTooltipInDom = (innerValue, {x, y}) => {
-    tooltipInput.style.cssText = getTooltipStyles({x, y});
+  const placeTooltipInDom = (innerValue, { x, y }) => {
+    tooltipInput.style.cssText = getTooltipStyles({ x, y });
     tooltipInput.value = innerValue;
     document.body.appendChild(tooltipInput);
     tooltipInput.focus();
-  }
+  };
 
   const outsideClickHandler = (e, nodeElement, cb) => {
-   if (e.target !== nodeElement) {
+    if (e.target !== nodeElement) {
       cb();
     }
-  }
+  };
 
-  const getTooltipStyles = ({x, y}) => {
+  const getTooltipStyles = ({ x, y }) => {
     return `
       position: absolute;
       top: ${y}px;
       left: ${x}px;
-    `
-  }
+    `;
+  };
 
   const injectCSSForAlteredImages = () => {
     const styleSheet = document.createElement('style');
 
     styleSheet.insertAdjacentText('beforeend', alteredImgStyles);
     document.head.append(styleSheet);
-  }
+  };
 
   // api functions
   const getRandomWords = async (size) => {
@@ -131,9 +136,9 @@
       return await getWords(size);
     } catch (e) {
       console.warn('Error during fetching words. Using default instead');
-      return new Array(size).fill('picture');
+      return new Array(size).fill(defaultAlt);
     }
-  }
+  };
 
   const getWords = async (size = 1) => {
     const url = `${BASE_URL}?number=${size}`;
@@ -144,7 +149,7 @@
     }
 
     return await data.json();
-  }
+  };
 
   // state
   let tooltipActive = false;
@@ -162,8 +167,8 @@
     return () => {
       mutationObserver.disconnect();
       document.body.removeEventListener('click', onTooltipHandle);
-    }
-  }
+    };
+  };
 
   await init();
 })();
