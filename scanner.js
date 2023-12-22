@@ -1,5 +1,15 @@
 'use strict';
-(async () => {
+
+/**
+ * Scans the DOM for newly added images and injects custom alternative text (alt) attributes.
+ * If specified, it can overwrite existing alt attributes not set by this script.
+ *
+ * @param {boolean} overwriteExistingAlt - If true, overwrites existing alt attributes not set by this script.
+ * @returns {Promise<void>} - A Promise that resolves when the initialization is complete.
+ *
+ * @throws {Error} - If there is an issue during fetching words via the API.
+ */
+const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
   // constants
   const dataAlterAttribute = 'data-userway_altered';
   const alteredImgStyles = `
@@ -11,8 +21,6 @@
   const BASE_URL = 'https://random-word-api.herokuapp.com/word';
   const mutationOptions = {childList: true, subtree: true};
   const tooltipInput = document.createElement('input');
-  // If is true then all alt attributes not set by this script would be replaced
-  const overwriteExistingAlt = false;
 
   // methods
  const handleDOMMutations = async (mutations) => {
@@ -164,4 +172,4 @@
   }
 
   await init();
-})();
+}
