@@ -1,5 +1,5 @@
 'use strict';
-(() => {
+(async () => {
   // constants
   const dataAlterAttribute = 'data-userway_altered';
   const alteredImgStyles = `
@@ -8,40 +8,32 @@
       box-sizing: border-box;
     }
   `;
-  const BASE_URL = 'https://random-word-api.herokuapp.com/word?number='
+  const BASE_URL = 'https://random-word-api.herokuapp.com/word';
   const mutationOptions = {childList: true, subtree: true};
-
-  // live collection
-  const imgsLiveCollection = document.getElementsByTagName('img');
-  const mutationObserver = new MutationObserver(handleDOMMutations);
-
   const tooltipInput = document.createElement('input');
-  let tooltipActive = false;
+  // If is true then all alt attributes not set by this script would be replaced
+  const overwriteExistingAlt = false;
 
-  init();
+  // methods
+ const handleDOMMutations = async (mutations) => {
+    const newImages = [];
 
-  function init() {
-    document.body.addEventListener('click', tooltipHandle);
-    injectCSSForAlteredImages(alteredImgStyles);
-    mutationObserver.observe(document.body, mutationOptions);
-    setAttributes(dataAlterAttribute);
-  }
-
-  function handleDOMMutations(mutations) {
     for (const mutation of mutations) {
       for (const addedNode of mutation.addedNodes) {
         if (addedNode instanceof HTMLImageElement) {
-          setAttributes(dataAlterAttribute);
-          return;
+          newImages.push(addedNode);
         }
       }
     }
+
+    if (newImages.length) {
+      await setAttributes(newImages);
+    }
   }
 
-  async function tooltipHandle(e) {
+  const onTooltipHandle = async (e) => {
     if (e.target && e.target.tagName === 'IMG' && !tooltipActive) {
       tooltipActive = true;
-
       const currentAltText = e.target.alt === 'undefined' ? '' : e.target.alt;
       const customAltText = await createCustomAlt(currentAltText || '', {x: e.clientX, y: e.clientY});
 
@@ -53,44 +45,70 @@
     }
   }
 
-  async function setAttributes(dataAttribute) {
-    const imagesToChange = getImagesNeedsToModify(imgsLiveCollection);
+  const setAttributes = async (images) => {
+    const imagesToChange = getImagesNeedsToModify(images);
     const words = await getRandomWords(imagesToChange.length);
 
     imagesToChange.forEach((img, i) => {
-      img.alt = words[i]
-      img.setAttribute(dataAttribute, '');
+      img.alt = words[i];
+      img.setAttribute(dataAlterAttribute, '');
     });
   }
-  function getImagesNeedsToModify(imgCollection) {
-    const imagesToChange = [];
 
-    for (let i = 0; i < imgCollection.length; i++) {
-      if (!imgsLiveCollection[i].hasAttribute('')) {
-        imagesToChange.push(imgsLiveCollection[i]);
-      }
-    }
-    return imagesToChange;
+  const getImagesNeedsToModify = (imgCollection) => {
+    return [...imgCollection].filter(isImproperImage);
   }
-  function createCustomAlt(innerValue, {x, y}) {
+
+  const isImproperImage = (img) => {
+    return !(
+      !overwriteExistingAlt && img.getAttribute('alt') ||
+      overwriteExistingAlt && img.hasAttribute(dataAlterAttribute)
+    );
+  }
+
+  const createCustomAlt = (innerValue, {x, y}) => {
     return new Promise((res) => {
-      tooltipInput.style.cssText = getTooltipStyles({x, y});
-      tooltipInput.value = innerValue;
-      document.body.appendChild(tooltipInput);
-      tooltipInput.focus();
+      placeTooltipInDom(innerValue, {x, y});
+
+      const cleanUpTooltip = (newAltText) => {
+        res(newAltText);
+        tooltipInput.removeEventListener('keydown', onKeyDown);
+        document.body.removeEventListener('click', onOutsideTooltipClick);
+        tooltipInput.remove();
+      }
 
       const onKeyDown = e => {
         if (e.key === 'Enter') {
-          res(e.target.value);
-          tooltipInput.removeEventListener('keydown', onKeyDown)
-          tooltipInput.remove();
+          cleanUpTooltip(e.target.value)
+        }
+        if (e.key === 'Escape') {
+          cleanUpTooltip(innerValue)
         }
       }
 
-      tooltipInput.addEventListener('keydown', onKeyDown)
-    })
+      const onOutsideTooltipClick = (e) => outsideClickHandler(e, tooltipInput, () => {
+        cleanUpTooltip(tooltipInput.value);
+      });
+
+      tooltipInput.addEventListener('keydown', onKeyDown);
+      document.body.addEventListener('click', onOutsideTooltipClick)
+    });
   }
-  function getTooltipStyles({x, y}){
+
+  const placeTooltipInDom = (innerValue, {x, y}) => {
+    tooltipInput.style.cssText = getTooltipStyles({x, y});
+    tooltipInput.value = innerValue;
+    document.body.appendChild(tooltipInput);
+    tooltipInput.focus();
+  }
+
+  const outsideClickHandler = (e, nodeElement, cb) => {
+   if (e.target !== nodeElement) {
+      cb();
+    }
+  }
+
+  const getTooltipStyles = ({x, y}) => {
     return `
       position: absolute;
       top: ${y}px;
@@ -98,22 +116,52 @@
     `
   }
 
-  function injectCSSForAlteredImages(alteredImgStyles) {
+  const injectCSSForAlteredImages = () => {
     const styleSheet = document.createElement('style');
+
     styleSheet.insertAdjacentText('beforeend', alteredImgStyles);
     document.head.append(styleSheet);
   }
 
   // api functions
-  async function getRandomWords(size) {
+  const getRandomWords = async (size) => {
     try {
       return await getWords(size);
     } catch (e) {
+      console.warn('Error during fetching words. Using default instead')
       return new Array(size).fill('picture');
     }
   }
-  async function getWords(size = 1) {
-    const data = await fetch(BASE_URL + size);
+
+  const getWords = async (size = 1) => {
+    const url = `${BASE_URL}?number=${size}`;
+    const data = await fetch(url);
+
+    if (!data.ok) {
+      throw new Error(`Error status code: ${data.status}`);
+    }
+
     return await data.json();
   }
+
+  // state
+  let tooltipActive = false;
+
+  const init = async () => {
+    const imgsCollection = document.getElementsByTagName('img');
+    const mutationObserver = new MutationObserver(handleDOMMutations);
+
+    document.body.addEventListener('click', onTooltipHandle);
+    injectCSSForAlteredImages();
+    mutationObserver.observe(document.body, mutationOptions);
+    await setAttributes(imgsCollection);
+
+    // cleanup function
+    return () => {
+      mutationObserver.disconnect();
+      document.body.removeEventListener('click', onTooltipHandle);
+    }
+  }
+
+  await init();
 })();
