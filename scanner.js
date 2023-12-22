@@ -1,21 +1,15 @@
 'use strict';
 
-/**
- * Scans the DOM for newly added images and injects custom alternative text (alt) attributes.
- * If specified, it can overwrite existing alt attributes not set by this script.
- *
- * @param {boolean} overwriteExistingAlt - If true, overwrites existing alt attributes not set by this script.
- * @returns {Promise<void>} - A Promise that resolves when the initialization is complete.
- *
- * @throws {Error} - If there is an issue during fetching words via the API.
- */
-const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
+(async () => {
+  // If true, overwrites existing alt attributes not set by this script.
+  let overwriteExistingAlt = true;
+
   // constants
   const dataAlterAttribute = 'data-userway_altered';
   const alteredImgStyles = `
     [${dataAlterAttribute}] {
-      border: .5rem solid blue;
       box-sizing: border-box;
+      border: .5rem solid blue;
     }
   `;
   const BASE_URL = 'https://random-word-api.herokuapp.com/word';
@@ -42,8 +36,8 @@ const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
   const onTooltipHandle = async (e) => {
     if (e.target && e.target.tagName === 'IMG' && !tooltipActive) {
       tooltipActive = true;
-      const currentAltText = e.target.alt === 'undefined' ? '' : e.target.alt;
-      const customAltText = await createCustomAlt(currentAltText || '', {x: e.clientX, y: e.clientY});
+      const currentAltText = e.target.alt || '';
+      const customAltText = await createCustomAlt(currentAltText, {x: e.clientX, y: e.clientY});
 
       if (customAltText !== currentAltText && customAltText.trim()) {
         e.target.alt = customAltText;
@@ -87,10 +81,10 @@ const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
 
       const onKeyDown = e => {
         if (e.key === 'Enter') {
-          cleanUpTooltip(e.target.value)
+          cleanUpTooltip(e.target.value);
         }
         if (e.key === 'Escape') {
-          cleanUpTooltip(innerValue)
+          cleanUpTooltip(innerValue);
         }
       }
 
@@ -99,7 +93,7 @@ const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
       });
 
       tooltipInput.addEventListener('keydown', onKeyDown);
-      document.body.addEventListener('click', onOutsideTooltipClick)
+      document.body.addEventListener('click', onOutsideTooltipClick);
     });
   }
 
@@ -136,7 +130,7 @@ const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
     try {
       return await getWords(size);
     } catch (e) {
-      console.warn('Error during fetching words. Using default instead')
+      console.warn('Error during fetching words. Using default instead');
       return new Array(size).fill('picture');
     }
   }
@@ -172,4 +166,4 @@ const scanAndInjectAlt = async (overwriteExistingAlt= false) => {
   }
 
   await init();
-}
+})();
