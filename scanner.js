@@ -23,7 +23,7 @@
   function init() {
     document.body.addEventListener('click', tooltipHandle);
     injectCSSForAlteredImages(alteredImgStyles);
-    mutationObserver.observe(document.body, mutationOptions)
+    mutationObserver.observe(document.body, mutationOptions);
     setAttributes(dataAlterAttribute);
   }
 
@@ -107,7 +107,7 @@
   // api functions
   async function getRandomWords(size) {
     try {
-      return await getWords();
+      return await getWords(size);
     } catch (e) {
       return new Array(size).fill('picture');
     }
