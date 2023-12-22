@@ -46,7 +46,7 @@
       const customAltText = await createCustomAlt(currentAltText || '', {x: e.clientX, y: e.clientY});
 
       if (customAltText !== currentAltText && customAltText.trim()) {
-        e.target.alt = currentAltText;
+        e.target.alt = customAltText;
       }
 
       tooltipActive = false;
